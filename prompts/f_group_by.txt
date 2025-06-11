@@ -1,0 +1,16 @@
+========================================= Prompt =========================================
+    
+To answer the question, we can first use f_group_by() to group the values in a column.
+/*
+col : Rank | Lane | Athlete | Time | Country
+row 1 : 1 | 6 | Manjeet Kaur (IND) | 52.17 | IND
+row 2 : 2 | 5 | Olga Tereshkova (KAZ) | 51.86 | KAZ
+row 3 : 3 | 4 | Pinki Pramanik (IND) | 53.06 | IND
+row 4 : 4 | 1 | Tang Xiaoyin (CHN) | 53.66 | CHN
+row 5 : 5 | 8 | Marina Maslyonko (KAZ) | 53.99 | KAZ
+*/
+Question: tell me the number of athletes from japan.
+The existing columns are: Rank, Lane, Athlete, Time, Country.
+Explanation: The question asks about the number of athletes from India. Each row is about
+an athlete. We can group column "Country" to group the athletes from the same country.
+Therefore, the answer is: f_group_by(Country).

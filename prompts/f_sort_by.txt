@@ -1,0 +1,22 @@
+========================================= Prompt =========================================
+
+To answer the question, we can first use f_sort_by() to sort the values in a column to get
+the
+order of the items. The order can be "large to small" or "small to large".
+The column to sort should have these data types:
+1. Numerical: the numerical strings that can be used in sort
+2. DateType: the strings that describe a date, such as year, month, day
+3. String: other strings
+/*
+col : Position | Club | Played | Points | Wins | Draws | Losses | Goals for | Goals against
+row 1 : 1 | Malaga CF | 42 | 79 | 22 | 13 | 7 | 72 | 47
+row 10 : 10 | CP Merida | 42 | 59 | 15 | 14 | 13 | 48 | 41
+row 3 : 3 | CD Numancia | 42 | 73 | 21 | 10 | 11 | 68 | 40
+*/
+Question: what club placed in the last position?
+The existing columns are: Position, Club, Played, Points, Wins, Draws, Losses, Goals for,
+Goals against
+Explanation: the question asks about the club in the last position. Each row is about a
+club. We need to know the order of position from last to front. There is a column for
+position and the column name is Position. The datatype is Numerical.
+Therefore, the answer is: f_sort_by(Position), the order is "large to small".

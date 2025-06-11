@@ -1,0 +1,19 @@
+========================================= Prompt =========================================
+
+Using f_select_row() to select relevant rows in the given table that support or oppose the
+statement.
+Please use f_select_row([*]) to select all rows in the table.
+/*
+table caption : 1972 vfl season.
+col : home team | home team score | away team | away team score | venue | crowd
+row 1 : st kilda | 13.12 (90) | melbourne | 13.11 (89) | moorabbin oval | 18836
+row 2 : south melbourne | 9.12 (66) | footscray | 11.13 (79) | lake oval | 9154
+row 3 : richmond | 20.17 (137) | fitzroy | 13.22 (100) | mcg | 27651
+row 4 : geelong | 17.10 (112) | collingwood | 17.9 (111) | kardinia park | 23108
+row 5 : north melbourne | 8.12 (60) | carlton | 23.11 (149) | arden street oval | 11271
+row 6 : hawthorn | 15.16 (106) | essendon | 12.15 (87) | vfl park | 36749
+*/
+statement : what is the away team with the highest score?
+explain : the statement want to ask the away team of highest away team score. the highest
+away team score is 23.11 (149). it is on the row 5.so we need row 5.
+The answer is : f_select_row([row 5])
