@@ -1,33 +1,135 @@
-========================================= Prompt =========================================
+====================================================================== CONTEXT =====================================================
 
-To answer the question, we can first use f_add_column() to add more columns to the table.
-The added columns should have these data types:
-1. Numerical: the numerical strings that can be used in sort, sum
-2. Datetype: the strings that describe a date, such as year, month, day
-3. String: other strings
+############################################################ Atomic Operation ######################################################
+If the table only needs a few rows to answer the question, we use f_select_row() to select
+these rows for it. For example,
 /*
-col : Week | When | Kickoff | Opponent | Results; Final score | Results; Team record
-row 1 : 1 | Saturday, April 13 | 7:00 p.m. | at Rhein Fire | W 27-21 | 1-0
-row 2 : 2 | Saturday, April 20 | 7:00 p.m. | London Monarchs | W 37-3 | 2-0
-row 3 : 3 | Sunday, April 28 | 6:00 p.m. | at Barcelona Dragons | W 33-29 | 3-0
+col : Home team | Home Team Score | Away Team | Away Team Score | Venue | Crowd
+row 1 : st kilda | 13.12 (90) | melbourne | 13.11 (89) | moorabbin oval | 18836
+row 2 : south melbourne | 9.12 (66) | footscray | 11.13 (79) | lake oval | 9154
+row 3 : richmond | 20.17 (137) | fitzroy | 13.22 (100) | mcg | 27651
 */
-Question: what is the date of the competition with highest attendance?
-The existing columns are: "Week", "When", "Kickoff", "Opponent", "Results; Final score",
-"Results; Team record", "Game site", "Attendance".
-Explanation: the question asks about the date of the competition with highest score. Each
-row is about one competition. We extract the value from column "Attendance" and create a
-different column "Attendance number" for each row. The datatype is Numerical.
-Therefore, the answer is: f_add_column(Attendance number). The value: 32092 | 34186 | 17503
+Question : Whose home team score is higher, richmond or st kilda?
+Operation: f_select_row(row 1, row 3)
+Explanation: The question asks about the home team score of richmond and st kilda. We need
+to know the the information of richmond and st kilda in row 1 and row 3. We select row 1
+and row 3.
+
+If the table only needs a few columns to answer the question, we use
+f_select_column() to select these columns for it. For example,
 /*
-col : Rank | Lane | Player | Time
-row 1 : | 5 | Olga Tereshkova (KAZ) | 51.86
-row 2 : | 6 | Manjeet Kaur (IND) | 52.17
-row 3 : | 3 | Asami Tanno (JPN) | 53.04
+col: Rank | Player | Team | Age
+row 1: 1 | Tom Brady | Buccaneers | 44
+row 2: 2 | Aaron Rodgers | Packers | 38
+row 3: 3 | Patrick Mahomes | Chiefs | 26
 */
-Question: tell me the number of athletes from japan.
-The existing columns are: Rank, Lane, Player, Time.
-Explanation: the question asks about the number of athletes from japan. Each row is about
-one athlete. We need to know the country of each athlete. We extract the value from column
-"Player" and create a different column "Country of athletes" for each row. The datatype
-is String.
-Therefore, the answer is: f_add_column(Country of athletes). The value: KAZ | IND | JPN
+Question: What is the age of each player?
+Operation: f_select_column(Player, Age)
+Explanation: The question only asks for the player and their age. We can ignore the other
+columns, so we use f_select_column to select the 'Player' and 'Age' columns.
+
+If the question asks about items with the same value and the number of these items, we use
+f_group_by() to group the items. For example,
+/*
+col: Rank | Lane | Athlete | Time | Country
+row 1: 1 | 6 | Manjeet Kaur (IND) | 52.17 | IND
+row 2: 2 | 5 | Olga Tereshkova (KAZ) | 51.86 | KAZ
+row 3: 3 | 4 | Pinki Pramanik (IND) | 53.06 | IND
+row 4: 4 | 1 | Tang Xiaoyin (CHN) | 53.66 | CHN
+row 5: 5 | 8 | Marina Maslyonko (KAZ) | 53.99 | KAZ
+*/
+Question: tell me the number of athletes from india.
+Operation: f_group_by(Country)
+Explanation: The question asks about the number of athletes from India. Each row is about
+an athlete. We can group column "Country" to group the athletes from the same country.
+
+If the question asks about the order of items in a column, we use f_sort_by() to sort
+the items. For example,
+/*
+col: Position | Club | Played | Points | Wins | Draws | Losses | Goals for | Goals against
+row 1: 1 | Malaga CF | 42 | 79 | 22 | 13 | 7 | 72 | 47
+row 10: 10 | CP Merida | 42 | 59 | 15 | 14 | 13 | 48 | 41
+row 3: 3 | CD Numancia | 42 | 73 | 21 | 10 | 11 | 68 | 40
+*/
+Question: what club placed in the last position?
+Operation: f_sort_by(Position)
+Explanation: the question asks about the club in the last position. Each row is about a
+club. We need to know the order of position from last to front. There is a column for
+position and the column name is Position. The datatype is Numerical.
+
+############################################################ Operation Chains ######################################################
+
+Here are examples of using the operations to answer the question.
+/*
+col : Date | Division | League | Regular Season | Playoffs | Open Cup
+row 1 : 2001/01/02 | 2 | USL A-League | 4th, Western | Quarterfinals | Did not qualify
+row 2 : 2002/08/06 | 2 | USL A-League | 2nd, Pacific | 1st Round | Did not qualify
+row 5 : 2005/03/24 | 2 | USL First Division | 5th | Quarterfinals | 4th Round
+*/
+Question: what was the last year where this team was a part of the usl a-league?
+Completion: 
+f_add_column(Year) -> f_select_row(row 1, row 2) -> f_select_column(Year, League) -> f_sort_by(Year) -> <END>
+
+Here are examples of using the operations to answer the question.
+/*
+col : Rank | Team | Points
+row 1 : 1 | Lakers | 112
+row 2 : 2 | Warriors | 109
+row 3 : 3 | Celtics | 115
+row 4 : 4 | Nets | 105
+row 5 : 5 | Bucks | 118
+row 6 : 6 | Suns | 101
+*/
+Question: which team in the top 5 has the most points?
+Completion: 
+f_select_row(row 1, row 2, row 3, row 4, row 5) -> f_sort_by(Points) -> <END>
+
+Here are examples of using the operations to answer the question.
+/*
+col : Actor | Year | Award | Film
+row 1 : Morgan Freeman | 2005 | Best Supporting Actor | Million Dollar Baby
+row 2 : Denzel Washington | 2002 | Best Actor | Training Day
+row 3 : Morgan Freeman | 1990 | Best Actor | Driving Miss Daisy
+row 4 : Al Pacino | 1993 | Best Actor | Scent of a Woman
+row 5 : Morgan Freeman | 1995 | Best Actor | The Shawshank Redemption
+*/
+Question: which actor has won the most awards from this list?
+Completion: 
+f_select_column(Actor) -> f_group_by(Actor) -> f_sort_by(Count) -> <END>
+
+Here are examples of using the operations to answer the question.
+/*
+col : City | Country | Population (Millions) | Area (km2)
+row 1 : Tokyo | Japan | 37.4 | 13452
+row 2 : Delhi | India | 29.3 | 11320
+row 3 : Shanghai | China | 26.3 | 6340
+row 4 : Sao Paulo | Brazil | 21.8 | 7944
+row 5 : Mexico City | Mexico | 21.6 | 7346
+*/
+Question: Among the top 3 most populous cities, which one has the smallest area?
+Completion: 
+f_select_row(row 1, row 2, row 3) -> f_select_column(City, Area (km2)) -> f_sort_by(Area (km2)) -> <END>
+
+Complete the operation chain. Output ONLY the operations separated by " -> " and ending with "<END>". No other text.
+
+VALID OPERATIONS: f_select_row, f_select_column, f_group_by, f_sort_by, f_add_column
+
+EXAMPLES:
+
+Table: Date | Division | League | Regular Season | Playoffs | Open Cup
+Question: what was the last year where this team was a part of the usl a-league?
+Chain: f_add_column(Year) -> f_select_row(row 1, row 2) -> f_select_column(Year, League) -> f_sort_by(Year) -> <END>
+
+Table: Rank | Team | Points
+Question: which team in the top 5 has the most points?
+Chain: f_select_row(row 1, row 2, row 3, row 4, row 5) -> f_sort_by(Points) -> <END>
+
+Table: Actor | Year | Award | Film
+Question: which actor has won the most awards from this list?
+Chain: f_select_column(Actor) -> f_group_by(Actor) -> f_sort_by(Count) -> <END>
+
+Table: City | Country | Population (Millions) | Area (km2)
+Question: Among the top 3 most populous cities, which one has the smallest area?
+Chain: f_select_row(row 1, row 2, row 3) -> f_select_column(City, Area (km2)) -> f_sort_by(Area (km2)) -> <END>
+
+======================================================================== TASK ======================================================

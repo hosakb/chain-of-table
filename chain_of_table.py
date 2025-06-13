@@ -23,38 +23,36 @@ class ChainOfTable:
         self.score = 0
         self._logger = logging.getLogger(__name__)
 
-    def execute(self, dataset, quick_test = True):
-
-        if quick_test:
-            self._logger.info(f"[execute] - Quick test with 10 examples activated")
+    def execute(self, dataset, mock=False):
 
         for i, table_data in enumerate(dataset):
-
-            if i >= 10:
-                 break
 
             question = table_data["question"]
             answer = table_data["answers"]
             self._table_handler.load_from_json(table_data)
             self._logger.info(f"[execute] - Asking LLM:\n{question}\n\nOn table: {self._table_handler.get_caption()}")
-            chain = [("[Begin]", "")]
-
-            
+            chain = "<Begin> -> "
 
             while True:
                 try:
                     txt_table = self._table_handler.to_str()
 
                     operation = self._dynamic_plan(txt_table, question, chain)
-                    args = self._generate_args(txt_table, question, operation)
 
- 
-                    chain.append((operation, args.group(0)))
-
-                    if operation == "[End]":
+                    if operation == "<End>":
                         break
 
+                    chain += operation
+                    operation = operation.split("(")[0]
+
+                    args = self._generate_args(txt_table, question, operation)
+
+
+                    self._logger.debug(f"Before Operation\n{self._table_handler.to_str()}")
                     self._table_handler.perform_operation(operation, args)
+                    self._logger.debug(f"After Operation\n{self._table_handler.to_str()}")
+                    return "DONE"
+                
                 except Exception as e:
                     self._logger.error(f"[execute] - Failed to complete chain of tables.")
                     raise
@@ -75,34 +73,39 @@ class ChainOfTable:
         try:
             self._logger.debug("[_dynamic_plan] - fetching prompt from file")
             prompt: str = get_prompt("dynamic_plan")
+
         except Exception as e:
                 self._logger.error(f"[_dynamic_plan] - failed to fetch prompt. Error:\n{e}") # TODO: recover?
                 raise
         
 
-        prompt += f"{table}\n"
+        prompt += f"\n{table}\n"
         prompt += 'Question: ' + question + '\n'
-        prompt += 'The next operation must be one of f_select_row() or f_select_column() or f_group_by() or f_sort_by(). \n'
         prompt += 'Function Chain: ' + str(chain) + '\n'
-        prompt += '======================================= Completion ======================================='
-        self._logger.debug(f"[_dynamic_plan] - complete prompt:\n{prompt}")
+        prompt += 'Completion: '        
+        self._logger.info(f"[_dynamic_plan] - prompting llm")
+        
         try:
-            self._logger.debug(f"[_dynamic_plan] - prompting llm")
-            f = self._model.query_llm(prompt).split("(")[0]
-            self._logger.debug(f"[_dynamic_plan] - extracted and split operation:\n{f}")
-            return f
+            
+            f = self._model.query_llm(prompt)
+            
         except Exception as e:
             self._logger.error(f"[_dynamic_plan] - Failed to get next operation. Error:\n{e}")
             raise
+
+        f_split = f.split(" -> ")[0]
+        self._logger.debug(f"[_dynamic_plan] - return value {f}")
+        return f_split
             
 
     def _generate_args(self, table, question, f: str):
         self._logger.info(f"[_generate_args] - fetching args for operation {f}")  
+
         try:
             match f:
                 case "f_add_column":
                     prompt = get_prompt(f)
-                    pattern = f"{f}((.*)). The value:(.*)"
+                    pattern = f"{f}\\((.*)\\). The value: (.*)"
                 case "f_select_column":
                     prompt = get_prompt(f)
                     pattern = f"{f}\\(\\[(.*)\\]\\)"
@@ -111,10 +114,11 @@ class ChainOfTable:
                     pattern = f"{f}\\(\\[(.*)\\]\\)"
                 case "f_sort_by":
                     prompt = get_prompt(f)
-                    pattern = f"{f}((.*))"
+                    pattern = f'{f}\\((.*)\\),\\s*the order is "(.*)"\\.'
                 case "f_group_by":
                     prompt = get_prompt(f)
-                    pattern = f'{f}\\((.*)\\),\\s*the order is "([^"]*)"\\.'
+                    pattern = f"{f}\\((.*)\\)"
+                    
                 case _:
                     self._logger.error(f"[_generate_args] - received unknown operation: {f}")
                     raise ValueError(f"received unknown operation: {f}") # TODO: impl retry of _dynamic_plan
@@ -126,7 +130,6 @@ class ChainOfTable:
         prompt += table + "\n"
         prompt += 'Question: ' + question + '\n'
         prompt += '======================================= Completion ======================================='
-        self._logger.debug(f"[_generate_args] - complete prompt:\n{prompt}")
         
         try:
             response = self._model.query_llm(prompt)
@@ -143,6 +146,7 @@ class ChainOfTable:
             self._logger.error(f"[_generate_args] - Failed to match arguments for operation {f}. Error:\n{e}") 
             raise # TODO: recover?
 
+        self._logger.debug(f"[_generate_args] - return value {match}")
         return match
 
     def _query(self, question):
@@ -178,7 +182,10 @@ def __main__():
 
     logger =  logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
-    console_handler = logging.StreamHandler()
+
+    logs_dir = "./logs/"
+    os.makedirs(logs_dir, exist_ok=True)
+    console_handler = logging.FileHandler("./logs/logs.log", mode="w")
     logger.addHandler(console_handler)
 
 
@@ -224,7 +231,7 @@ def __main__():
     dataset = load_from_disk(local_dataset_path)["train"]
     
     cot = ChainOfTable(model, table_handler)
-    cot.execute(dataset, quick_test=True)
+    cot.execute(dataset)
 
 
 __main__()

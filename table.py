@@ -1,11 +1,15 @@
 import abc
 from re import Match
 from typing import Any, Optional, Tuple, Union
+import logging
 
 import pandas as pd
 import sqlite3
 
 class ITableStrategy(abc.ABC):
+    def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
+
     @abc.abstractmethod
     def operation(self, table: Any, operation: str, args: Match[str]) -> Any: # none in the case of using a SQL DB
         pass
@@ -61,9 +65,10 @@ class Table:
 ########################################## Strategies #################################################
 class PandasStrategy(ITableStrategy):
     def operation(self, table: pd.DataFrame, operation: str, args: Match[str]) -> pd.DataFrame:
-
         if table is None:
             raise ValueError("No DataFrame assigned to table")
+        
+        self.logger.debug(f"[operation] - operation: {operation}, args: {args}")
 
         match operation:
             case "f_add_column":
@@ -71,20 +76,28 @@ class PandasStrategy(ITableStrategy):
                 values = args.group(2).split(" | ")
                 table[col_name] = values
             case "f_select_column":
-                col_name = args.group(1).strip()
-                table = table[[col_name]]
+                col_names = args.group(1).strip().split(", ")
+                self.logger.debug(f"[operation] - {operation}, col_name: {col_names}")
+                table = table[col_names]
             case "f_select_row":
-                    idx = args.group(1).strip().split(" ")[1]
-                    table = table.iloc[[int(idx) - 1]]
+                idx: list[str] = [int(i.split("row ")[1]) - 1 for i in args.group(1).strip().split(",")] # expects f_select_row([row 1, row 2, row 3, row 4])
+                table = table.iloc[idx]
+                self.logger.debug(f"[operation] - {operation}, idx: {idx}")
             case "f_sort_by":
-                col = args.group(1).strip()
+               
+                col_name = args.group(1).strip()
+                print(col_name)
                 ascending = False if args.group(2) == "large to small" else True
-                table = table.sort_values(by=[col], ascending=ascending)
+                self.logger.debug(f"[operation] - {operation}, col_name: {col_name}, ascending: {ascending}")
+                table = table.sort_values(by=[col_name], ascending=ascending)
+               
             case "f_group_by":
-                col = args.group(1).strip()
-                table = table.groupby(by=[col]).size().reset_index(name='Count')
+                col_name = args.group(1).strip()
+                table = table.groupby(by=[col_name]).size().reset_index(name='Count')
+                self.logger.debug(f"[operation] - {operation}, col_name: {col_name}")
             case _:
-                raise NotImplementedError()
+                self.logger.error(f"Unknown operation name provided {operation}")
+                raise ValueError(f"Unknown operation name provided {operation}")
             
         return table
     

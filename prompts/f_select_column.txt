@@ -1,26 +1,16 @@
-    ========================================= Prompt =========================================
-    
-    Use f_select_column() to filter out useless columns in the table according to information
-    in the statement and the table.
-    /*
-      {
-      "table_caption": "south wales derby",
-      "columns": ["competition", "total matches", "cardiff win", "draw", "swansea win"],
-      "table_column_priority": [
-        ["competition", "league", "fa cup", "league cup"],
-        ["total matches", "55", "2", "5"],
-        ["cardiff win", "19", "0", "2"],
-        ["draw", "16", "27", "0"],
-        ["swansea win", "20", "2", "3"]
-        ]
-      }
-    */
-    statement : there are no cardiff wins that have a draw greater than 27.
-    similar words link to columns :
-    no cardiff wins -> cardiff win
-    a draw -> draw
-    column value link to columns :
-    27 -> draw
-    semantic sentence link to columns :
-    None
-    The answer is : f_select_column([cardiff win, draw])
+[Instruction]
+Use f_select_column() to filter out useless columns in the table according to the information in the question. Your output must be in the format:
+The answer is: f_select_column([COLUMN_1, COLUMN_2, ...])
+
+[Example 1]
+/*
+col: competition | total matches | cardiff win | draw | swansea win
+row 1: league | 55 | 19 | 16 | 20
+row 2: fa cup | 2 | 0 | 2 | 2
+row 3: league cup | 5 | 2 | 0 | 3
+*/
+Question: there are no cardiff wins that have a draw greater than 27.
+Explanation: The question is about "cardiff win" and "draw". We only need these two columns to verify the statement.
+The answer is: f_select_column([cardiff win, draw])
+
+[Task]
