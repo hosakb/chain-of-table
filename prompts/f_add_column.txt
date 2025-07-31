@@ -1,22 +1,59 @@
-[Instruction]
-To answer the question, you must generate a new column to add to the table.
+========================================= Prompt =========================================
+To answer the question, we can first use f_add_column() to add more columns to the table.
 The added columns should have these data types:
 1. Numerical: the numerical strings that can be used in sort, sum
 2. Datetype: the strings that describe a date, such as year, month, day
 3. String: other strings
 
-Your output must be in the format:
-The answer is: f_add_column(COLUMN_NAME). The value: VALUE_1 | VALUE_2 | ...
+When you add values to a new column, you need to add as many valuea as there are rows.
 
-[Example 1]
 /*
-col: Rank | Lane | Player | Time
-row 1: | 5 | Olga Tereshkova (KAZ) | 51.86
-row 2: | 6 | Manjeet Kaur (IND) | 52.17
-row 3: | 3 | Asami Tanno (JPN) | 53.04
+col : Week | When | Kickoff | Opponent | Results; Final score | Results; Team record
+row 1 : 1 | Saturday, April 13 | 7:00 p.m. | at Rhein Fire | W 27-21 | 1-0
+row 2 : 2 | Saturday, April 20 | 7:00 p.m. | London Monarchs | W 37-3 | 2-0
+row 3 : 3 | Sunday, April 28 | 6:00 p.m. | at Barcelona Dragons | W 33-29 | 3-0
+*/
+Question: what is the date of the competition with highest attendance?
+The existing columns are: "Week", "When", "Kickoff", "Opponent", "Results; Final score", "Results; Team record", "Game site", "Attendance".
+Explanation: the question asks about the date of the competition with highest score. Each row is about one competition. We extract the value from column "Attendance" and create a different column "Attendance number" for each row. The datatype is Numerical.
+Therefore, the answer is: f_add_column(Attendance number). The value: 32092 | 34186 | 17503.
+
+/*
+col : Rank | Lane | Player | Time
+row 1 : | 5 | Olga Tereshkova (KAZ) | 51.86
+row 2 : | 6 | Manjeet Kaur (IND) | 52.17
+row 3 : | 3 | Asami Tanno (JPN) | 53.04
 */
 Question: tell me the number of athletes from japan.
-Explanation: The question asks about the number of athletes from japan. Each row is about one athlete. We need to know the country of each athlete. We extract the value from column "Player" and create a different column "Country of athletes" for each row. The datatype is String.
-The answer is: f_add_column(Country of athletes). The value: KAZ | IND | JPN
+The existing columns are: Rank, Lane, Player, Time.
+Explanation: the question asks about the number of athletes from japan. Each row is about one athlete. We need to know the country of each athlete. We extract the value from column "Player" and create a different column "Country of athletes" for each row. The datatype is String.
+Therefore, the answer is: f_add_column(Country of athletes). The value: KAZ | IND | JPN.
 
-[Task]
+/*
+col : Employee | Department | Start Date | End Date | Salary
+row 1 : Smith | Engineering | 2020-01-15 | 2023-06-30 | 75000
+row 2 : Jones | Marketing | 2019-03-20 | 2023-12-15 | 65000
+row 3 : Brown | Sales | 2021-07-10 | 2023-08-20 | 70000
+*/
+Question: which employee worked the longest period?
+The existing columns are: Employee, Department, Start Date, End Date, Salary.
+Explanation: the question asks about the longest working period. Each row is about one employee. We need to calculate the working duration from Start Date and End Date. We create a new column "Years Worked" for each row. The datatype is Numerical.
+Therefore, the answer is: f_add_column(Years Worked). The value: 3.5 | 4.8 | 2.1.
+
+/*
+col : Product | Price | Category | Description
+row 1 : Laptop Pro | $1299.99 | Electronics | High-performance laptop
+row 2 : Office Chair | $299.50 | Furniture | Ergonomic office chair
+row 3 : Smartphone X | $899.00 | Electronics | Latest smartphone model
+*/
+Question: what is the average price of electronics products?
+The existing columns are: Product, Price, Category, Description.
+Explanation: the question asks about average price, which requires numerical calculation. The Price column contains currency symbols. We extract the numerical value from column "Price" and create a new column "Price Value" for each row. The datatype is Numerical.
+Therefore, the answer is: f_add_column(Price Value). The value: 1299.99 | 299.50 | 899.00.
+
+========================================= Format =========================================
+Only respond in the following format, without providing and further description or thoughts. Note that the tables for the following oeprations have one, four and five rows and are adding as many values to the new column:
+
+The answer is: f_add_column(Country). The value: ESP.
+The answer is: f_add_column(Color). The value: blue | red | green | purple.
+The answer is: f_add_column(Player). The value: Jon | Tim | Tom | Tim | Sam.

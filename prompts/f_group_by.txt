@@ -1,18 +1,61 @@
-[Instruction]
-To answer the question, use f_group_by() to group the rows by the values in a specific column and count them. Your output must be in the format:
-The answer is: f_group_by(COLUMN_NAME)
+========================================= Prompt =========================================
+To answer the question, we can first use f_group_by() to group the values in a column.
 
-[Example 1]
 /*
-col: Rank | Lane | Athlete | Time | Country
-row 1: 1 | 6 | Manjeet Kaur (IND) | 52.17 | IND
-row 2: 2 | 5 | Olga Tereshkova (KAZ) | 51.86 | KAZ
-row 3: 3 | 4 | Pinki Pramanik (IND) | 53.06 | IND
-row 4: 4 | 1 | Tang Xiaoyin (CHN) | 53.66 | CHN
-row 5: 5 | 8 | Marina Maslyonko (KAZ) | 53.99 | KAZ
+col : Rank | Lane | Athlete | Time | Country
+row 1 : 1 | 6 | Manjeet Kaur (IND) | 52.17 | IND
+row 2 : 2 | 5 | Olga Tereshkova (KAZ) | 51.86 | KAZ
+row 3 : 3 | 4 | Pinki Pramanik (IND) | 53.06 | IND
+row 4 : 4 | 1 | Tang Xiaoyin (CHN) | 53.66 | CHN
+row 5 : 5 | 8 | Marina Maslyonko (KAZ) | 53.99 | KAZ
 */
 Question: tell me the number of athletes from each country.
-Explanation: The question asks for the number of athletes from each country. This requires grouping the rows by the "Country" column.
-The answer is: f_group_by(Country)
+The existing columns are: Rank, Lane, Athlete, Time, Country.
+Explanation: The question asks about the number of athletes from each country. Each row is about an athlete. We can group column "Country" to group the athletes from the same country and count them.
+Therefore, the answer is: f_group_by(Country).
 
-[Task]
+/*
+col : Product | Category | Sales | Quarter | Region
+row 1 : Laptop | Electronics | 5000 | Q1 | North
+row 2 : Phone | Electronics | 8000 | Q1 | North
+row 3 : Desk | Furniture | 2000 | Q1 | North
+row 4 : Laptop | Electronics | 5500 | Q1 | South
+row 5 : Chair | Furniture | 1500 | Q1 | South
+*/
+Question: how many products are sold in each category?
+The existing columns are: Product, Category, Sales, Quarter, Region.
+Explanation: The question asks about the count of products in each category. Each row represents a product sale. We need to group by "Category" to count products in Electronics, Furniture, etc.
+Therefore, the answer is: f_group_by(Category).
+
+/*
+col : Employee | Department | Salary | Manager | Location
+row 1 : Smith | Engineering | 75000 | Johnson | NYC
+row 2 : Jones | Marketing | 65000 | Wilson | LA
+row 3 : Brown | Engineering | 80000 | Johnson | NYC
+row 4 : Davis | Sales | 70000 | Taylor | Chicago
+row 5 : Evans | Marketing | 68000 | Wilson | LA
+*/
+Question: how many employees report to each manager?
+The existing columns are: Employee, Department, Salary, Manager, Location.
+Explanation: The question asks about the number of employees under each manager. Each row represents an employee. We need to group by "Manager" to count employees under Johnson, Wilson, Taylor, etc.
+Therefore, the answer is: f_group_by(Manager).
+
+/*
+col : Order | Customer | Amount | Date | Status | Payment
+row 1 : 001 | ClientA | 1500 | 2023-01-15 | Completed | Credit
+row 2 : 002 | ClientB | 2200 | 2023-01-16 | Pending | Debit
+row 3 : 003 | ClientA | 1800 | 2023-01-17 | Completed | Credit
+row 4 : 004 | ClientC | 3000 | 2023-01-18 | Cancelled | Cash
+row 5 : 005 | ClientB | 2500 | 2023-01-19 | Completed | Credit
+*/
+Question: what is the distribution of orders by status?
+The existing columns are: Order, Customer, Amount, Date, Status, Payment.
+Explanation: The question asks about how orders are distributed across different statuses. Each row represents an order. We need to group by "Status" to count orders that are Completed, Pending, Cancelled, etc.
+Therefore, the answer is: f_group_by(Status).
+
+========================================= Format =========================================
+Only respond in the following format, without providing and further description or thoughts:
+
+Therefore, the answer is: f_group_by(Level)
+Therefore, the answer is: f_group_by(Name)
+Therefore, the answer is: f_group_by(City)

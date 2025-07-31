@@ -1,22 +1,72 @@
-[Instruction]
-To answer the question, use f_sort_by() to sort the rows based on the values in a column. You must specify the column to sort by and the order, which can be "large to small" or "small to large".
+========================================= Prompt =========================================
+To answer the question, we can first use f_sort_by() to sort the values in a column to get the order of the items. The order can be "large to small" or "small to large".
 The column to sort should have these data types:
 1. Numerical: the numerical strings that can be used in sort
 2. DateType: the strings that describe a date, such as year, month, day
 3. String: other strings
 
-Your output must be in the format:
-The answer is: f_sort_by(COLUMN_NAME), the order is "ORDER"
-
-[Example 1]
 /*
-col: Position | Club | Played | Points | Wins | Draws | Losses | Goals for | Goals against
-row 1: 1 | Malaga CF | 42 | 79 | 22 | 13 | 7 | 72 | 47
-row 10: 10 | CP Merida | 42 | 59 | 15 | 14 | 13 | 48 | 41
-row 3: 3 | CD Numancia | 42 | 73 | 21 | 10 | 11 | 68 | 40
+col : Position | Club | Played | Points | Wins | Draws | Losses | Goals for | Goals against
+row 1 : 1 | Malaga CF | 42 | 79 | 22 | 13 | 7 | 72 | 47
+row 10 : 10 | CP Merida | 42 | 59 | 15 | 14 | 13 | 48 | 41
+row 3 : 3 | CD Numancia | 42 | 73 | 21 | 10 | 11 | 68 | 40
 */
 Question: what club placed in the last position?
-Explanation: The question asks about the club in the last position. To find the last position, we need to sort the "Position" column in descending (large to small) order. The datatype is Numerical.
-The answer is: f_sort_by(Position), the order is "large to small"
+The existing columns are: Position, Club, Played, Points, Wins, Draws, Losses, Goals for, Goals against
+Explanation: the question asks about the club in the last position. Each row is about a club. We need to know the order of position from last to front. There is a column for position and the column name is Position. The datatype is Numerical.
+Therefore, the answer is: f_sort_by(Position), the order is "large to small".
 
-[Task]
+/*
+col : Student | Math Score | Science Score | Total Score
+row 1 : Alice | 85 | 92 | 177
+row 2 : Bob | 78 | 85 | 163
+row 3 : Carol | 92 | 88 | 180
+row 4 : David | 88 | 90 | 178
+*/
+Question: who has the highest total score?
+The existing columns are: Student, Math Score, Science Score, Total Score
+Explanation: the question asks about the highest total score. Each row is about a student. We need to sort by total scores from highest to lowest to find the top performer. The column is Total Score. The datatype is Numerical.
+Therefore, the answer is: f_sort_by(Total Score), the order is "large to small".
+
+/*
+col : Employee | Department | Start Date | Salary | Years
+row 1 : Smith | Engineering | 2020-03-15 | 75000 | 3
+row 2 : Jones | Marketing | 2018-07-20 | 65000 | 5
+row 3 : Brown | Sales | 2021-11-10 | 70000 | 2
+row 4 : Davis | HR | 2019-02-28 | 60000 | 4
+*/
+Question: who was hired most recently?
+The existing columns are: Employee, Department, Start Date, Salary, Years
+Explanation: the question asks about the most recent hire. Each row is about an employee. We need to sort by start date from most recent to oldest. The column is Start Date. The datatype is DateType.
+Therefore, the answer is: f_sort_by(Start Date), the order is "large to small".
+
+/*
+col : Product | Category | Price | Rating | Reviews
+row 1 : Laptop A | Electronics | 1200 | 4.5 | 150
+row 2 : Phone B | Electronics | 800 | 4.7 | 200
+row 3 : Tablet C | Electronics | 500 | 4.3 | 120
+row 4 : Monitor D | Electronics | 300 | 4.6 | 80
+*/
+Question: which product has the lowest price?
+The existing columns are: Product, Category, Price, Rating, Reviews
+Explanation: the question asks about the lowest price. Each row is about a product. We need to sort by price from lowest to highest to find the cheapest product. The column is Price. The datatype is Numerical.
+Therefore, the answer is: f_sort_by(Price), the order is "small to large".
+
+/*
+col : Book | Author | Publication Year | Pages | Rating
+row 1 : Novel A | Writer X | 2020 | 320 | 4.2
+row 2 : Story B | Writer Y | 2018 | 250 | 4.5
+row 3 : Guide C | Writer Z | 2022 | 180 | 4.0
+row 4 : Tale D | Writer X | 2019 | 300 | 4.7
+*/
+Question: what is the oldest published book?
+The existing columns are: Book, Author, Publication Year, Pages, Rating
+Explanation: the question asks about the oldest published book. Each row is about a book. We need to sort by publication year from oldest to newest. The column is Publication Year. The datatype is Numerical.
+Therefore, the answer is: f_sort_by(Publication Year), the order is "small to large".
+
+========================================= Format =========================================
+Only respond in the following format, without providing and further description or thoughts:
+
+The answer is: f_sort_by(Year), the order is "small to large"
+The answer is: f_sort_by(Size), the order is "small to large"
+The answer is: f_sort_by(End Date), the order is "large to small"

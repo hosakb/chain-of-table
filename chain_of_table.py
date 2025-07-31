@@ -1,18 +1,19 @@
 import os
 import re
 import logging
+import asyncio
 
 from dotenv import load_dotenv
 import pandas as pd
 from datasets import load_from_disk
+from tqdm import tqdm
 
 from model import LLM, LocalOllamaStrategy, ChatGPTStrategy
 from table import Table, PandasStrategy
-from utils import get_prompt
+from utils import ModelError, TableError, RecoverableError
+from prompt import  build_prompt_for_dynamic_plan, build_prompt_for_generate_args, get_prompt_for_query
 
-# TODO: impl retry
-# TODO: Improve scoring 
-# TODO: recover?
+MAX_CONCURRENT = 1
 
 
 class ChainOfTable:
@@ -20,167 +21,146 @@ class ChainOfTable:
     def __init__(self, model, table_handler: Table):
         self._model: LLM = model
         self._table_handler: Table = table_handler
-        self.score = 0
-        self._logger = logging.getLogger(__name__)
+        self._score = 0
+        self._logger = logging.getLogger("my_logger")
+        
+    async def execute(self, dataset, max_concurrent=1):
 
-    def execute(self, dataset, mock=False):
+        sem = asyncio.Semaphore(max_concurrent)
 
-        for i, table_data in enumerate(dataset):
+        tasks = []
+        async def worker(row):
+            async with sem:
+                return await self._process_singel_table(row)
 
-            question = table_data["question"]
-            answer = table_data["answers"]
-            self._table_handler.load_from_json(table_data)
-            self._logger.info(f"[execute] - Asking LLM:\n{question}\n\nOn table: {self._table_handler.get_caption()}")
-            chain = "<Begin> -> "
+        for table_data in tqdm(dataset):
+            tasks.append(asyncio.create_task(worker(table_data)))
 
-            while True:
-                try:
-                    txt_table = self._table_handler.to_str()
+        for finished in tqdm(asyncio.as_completed(tasks), total=len(tasks)):
+                await finished
 
-                    operation = self._dynamic_plan(txt_table, question, chain)
+        return self._score
+    
+    async def _process_singel_table(self, table_data):
 
-                    if operation == "<End>":
-                        break
+        # MAX_RETRIES = 3
+        MAX_CHAIN_LENGTH = 4
 
-                    chain += operation
-                    operation = operation.split("(")[0]
+        question = table_data["question"]
+        answer = table_data["answers"]
+        self._table_handler.load_from_json(table_data)
+        self._logger.info(
+            f"[execute] - Asking LLM:\n{question}\nOn {self._table_handler.get_caption()}"
+        )
+        chain = "<Begin> -> "
+        chain_length = 0
+        # attempt = 1
 
-                    args = self._generate_args(txt_table, question, operation)
-
-
-                    self._logger.debug(f"Before Operation\n{self._table_handler.to_str()}")
-                    self._table_handler.perform_operation(operation, args)
-                    self._logger.debug(f"After Operation\n{self._table_handler.to_str()}")
-                    return "DONE"
-                
-                except Exception as e:
-                    self._logger.error(f"[execute] - Failed to complete chain of tables.")
-                    raise
+        while chain_length <= MAX_CHAIN_LENGTH:
+            txt_table = self._table_handler.to_str()
+            handler_backup = self._table_handler
 
             try:
-                response = self._query(question)
-            except Exception as e:
-                    self._logger.error(f"[execute] - Failed to query final table.")
-                    raise
-            
-            if response == answer: # TODO: Improve scoring 
-                self.score += 1
-                self._logger.error(f"[execute] - Current score: {self.score}")
+                operation = await self._dynamic_plan(txt_table, question, chain)
+                if operation == "<End>":
+                    break
 
+                operation_name = operation.split("(")[0]
+                args = await self._generate_args(txt_table, question, operation_name)
 
-    def _dynamic_plan(self, table, question, chain) -> str:
-        self._logger.info(f"[_dynamic_plan] - fetching next operation")
-        try:
-            self._logger.debug("[_dynamic_plan] - fetching prompt from file")
-            prompt: str = get_prompt("dynamic_plan")
+                self._table_handler.perform_operation(operation_name, args)
+                chain += operation
+                chain_length = len(chain.split("->")) - 1
 
-        except Exception as e:
-                self._logger.error(f"[_dynamic_plan] - failed to fetch prompt. Error:\n{e}") # TODO: recover?
+            except RecoverableError as e:
+                self._table_handler = handler_backup
+
+                # if attempt >= MAX_RETRIES:
+                #     break
+
+                # attempt += 1
+                response = "FAILED ATTEMPT" # vs. retry
+                continue
+            except Exception:
                 raise
-        
 
-        prompt += f"\n{table}\n"
-        prompt += 'Question: ' + question + '\n'
-        prompt += 'Function Chain: ' + str(chain) + '\n'
-        prompt += 'Completion: '        
-        self._logger.info(f"[_dynamic_plan] - prompting llm")
-        
+        # for attempt in range(1, MAX_RETRIES + 1):
+            
         try:
+            response = await self._query(question)
+            # break
+        except RecoverableError as e:
             
-            f = self._model.query_llm(prompt)
-            
+            # if attempt >= MAX_RETRIES:
+            response = "FAILED ATTEMPT"
+                # break
+                
         except Exception as e:
-            self._logger.error(f"[_dynamic_plan] - Failed to get next operation. Error:\n{e}")
             raise
 
-        f_split = f.split(" -> ")[0]
-        self._logger.debug(f"[_dynamic_plan] - return value {f}")
+        
+        if response == answer:
+            self._score += 1
+            self._logger.info(f"[execute] - ✅ for {self._table_handler.get_caption()}")
+        else:
+            self._logger.info(f"[execute] - answerd x for {self._table_handler.get_caption()}")
+
+    async def _dynamic_plan(self, table, question, chain) -> str:
+
+        prompt = build_prompt_for_dynamic_plan(table, question, chain)
+
+        try:
+            response = await self._model.query_llm(prompt)
+
+            pattern = re.compile(r"f_.*?<END>")
+            matches = pattern.findall(response)[0]
+
+        except IndexError as e:
+            raise RecoverableError from e
+
+        except Exception as e:
+            raise
+
+        f_split = matches.split(" -> ")[0]
         return f_split
-            
 
-    def _generate_args(self, table, question, f: str):
-        self._logger.info(f"[_generate_args] - fetching args for operation {f}")  
+    async def _generate_args(self, table, question, f: str):
+        prompt, pattern = build_prompt_for_generate_args(table, question, f)
 
         try:
-            match f:
-                case "f_add_column":
-                    prompt = get_prompt(f)
-                    pattern = f"{f}\\((.*)\\). The value: (.*)"
-                case "f_select_column":
-                    prompt = get_prompt(f)
-                    pattern = f"{f}\\(\\[(.*)\\]\\)"
-                case "f_select_row":
-                    prompt = get_prompt(f)
-                    pattern = f"{f}\\(\\[(.*)\\]\\)"
-                case "f_sort_by":
-                    prompt = get_prompt(f)
-                    pattern = f'{f}\\((.*)\\),\\s*the order is "(.*)"\\.'
-                case "f_group_by":
-                    prompt = get_prompt(f)
-                    pattern = f"{f}\\((.*)\\)"
-                    
-                case _:
-                    self._logger.error(f"[_generate_args] - received unknown operation: {f}")
-                    raise ValueError(f"received unknown operation: {f}") # TODO: impl retry of _dynamic_plan
-                   
+            response = await self._model.query_llm(prompt)
         except Exception as e:
-                self._logger.error(f"[_generate_args] - failed to fetch prompt for operation{f}. Error:\n{e}") # TODO: recover?
-                raise
-        
-        prompt += table + "\n"
-        prompt += 'Question: ' + question + '\n'
-        prompt += '======================================= Completion ======================================='
-        
-        try:
-            response = self._model.query_llm(prompt)
-        except Exception as e:
-                self._logger.error(f"[_generate_args] - failed to prompt llm. Error:\n{e}") # TODO: recover?
-                raise
+            raise
 
         try:
             match = re.search(pattern, response)
             if not match:
-                self._logger.error(f"[_generate_args] - No arguments found in llm response: {response}.") 
-                raise ValueError(f"No arguments found for {f} in llm response: {response}.") # TODO: recover?
+                raise ValueError(
+                    f"No arguments found for {f} in llm response: {response}."
+                )
         except Exception as e:
-            self._logger.error(f"[_generate_args] - Failed to match arguments for operation {f}. Error:\n{e}") 
-            raise # TODO: recover?
-
-        self._logger.debug(f"[_generate_args] - return value {match}")
+            raise  
         return match
 
-    def _query(self, question):
-        self._logger.info(f"[_query] - Querying final table")
+    async def _query(self, question):
         try:
             table = self._table_handler.to_str()
         except Exception as e:
-            self._logger.error(f"[_query] - failed to fetch string representation of table. Error:\n{e}") 
-            raise # TODO: recover?
+            raise  
+
+        prompt = get_prompt_for_query(table, question)
 
         try:
-            prompt: str = get_prompt("query")
+            response = await self._model.query_llm(prompt)
         except Exception as e:
-            self._logger.error(f"[_query] - failed to fetch prompt for query. Error:\n{e}") 
-            raise # TODO: recover?
-        
-        prompt += f"{table}\n"
-        prompt += 'Question: ' + question + '\n'
-        prompt += '======================================= Completion ======================================='
-        self._logger.debug(f"[_query] - complete prompt:\n{prompt}")
-        
-        try:
-            response = self._model.query_llm(prompt)
-        except Exception as e:
-                self._logger.error(f"[_query] - failed to prompt llm. Error:\n{e}") 
-                raise # TODO: recover?
-
+            raise
         return response
 
 
 def __main__():
     load_dotenv()
 
-    logger =  logging.getLogger(__name__)
+    logger = logging.getLogger("my_logger")
     logger.setLevel(logging.DEBUG)
 
     logs_dir = "./logs/"
@@ -188,50 +168,44 @@ def __main__():
     console_handler = logging.FileHandler("./logs/logs.log", mode="w")
     logger.addHandler(console_handler)
 
-
-        # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-        # if OPENAI_API_KEY is None:
-        #     return "Missing API Key"
-
-        # config = {
-        #     "api_key": OPENAI_API_KEY,
-        #     "model": "gpt-3",
-        #     "temperature": 0.7,
-        #     "max_tokens": 64,
-        #     "top_p": 1,
-        #     "frequency_penalty": 0,
-        #     "presence_penalty": 0,
-        # }
-
-        # model_strategy = ChatGPTStrategy(config)
-    print("Execute")
     base_url = os.getenv("OLLAMA_BASE_URL")
+    local_dataset_path = "./wikitablequestions_parquet_store"
 
     config = {
         "base_url": base_url,
-        "model": "llama3:latest",
+        "model": "llama2:13b-chat",
         "temperature": 0.7,
-        "max_tokens": 64,
+        "max_tokens": 200,
         "top_p": 1,
         "frequency_penalty": 0,
         "presence_penalty": 0,
     }
-    
 
     model_strategy = LocalOllamaStrategy(config)
-    model = LLM(model_strategy)
+    accuracy = None
 
-    table_strategy = PandasStrategy()
-    table_handler = Table(table_strategy)
+    try:
+        model = LLM(model_strategy)
+        table_strategy = PandasStrategy()
+        table_handler = Table(table_strategy)
 
-    local_dataset_path = "./wikitablequestions_parquet_store"
-    os.makedirs(local_dataset_path, exist_ok=True)
-    
-    dataset = load_from_disk(local_dataset_path)["train"]
-    
-    cot = ChainOfTable(model, table_handler)
-    cot.execute(dataset)
+        os.makedirs(local_dataset_path, exist_ok=True)
+        dataset = load_from_disk(local_dataset_path)["train"]
+
+        score = asyncio.run(ChainOfTable(model, table_handler).execute(dataset, MAX_CONCURRENT))
+        accuracy = score / len(dataset)
+
+    except (ModelError, TableError) as e:
+        msg = f"Terminating application due to a critical error: \n{e}"
+        logger.exception(msg)
+    except Exception as e:
+        msg = f"Terminating application due to an unexpected error: \n{e}"
+        logger.exception(msg)
+
+    if accuracy is not None:
+        print(f"accuracy: {accuracy}")
+    else:
+        print("No accuracy could be computed due to an error.")
 
 
 __main__()

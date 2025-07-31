@@ -1,56 +1,43 @@
-[Instruction]
-Use f_select_row() to select relevant rows from the table that are needed to answer the question. Your output must be in the format:
-The answer is: f_select_row([row X, row Y, ...])
+========================================= Prompt =========================================
+Use f_select_row() to select relevant rows in the given table that help to answer the
+question.
+Please use f_select_row([*]) to select all rows in the table.
 
-[Example 1]
 /*
-col: home team | home team score | away team | away team score | venue | crowd
-row 1: st kilda | 13.12 (90) | melbourne | 13.11 (89) | moorabbin oval | 18836
-row 2: south melbourne | 9.12 (66) | footscray | 11.13 (79) | lake oval | 9154
-row 3: richmond | 20.17 (137) | fitzroy | 13.22 (100) | mcg | 27651
-row 4: geelong | 17.10 (112) | collingwood | 17.9 (111) | kardinia park | 23108
-row 5: north melbourne | 8.12 (60) | carlton | 23.11 (149) | arden street oval | 11271
-row 6: hawthorn | 15.16 (106) | essendon | 12.15 (87) | vfl park | 36749
+col : Product | Category | Price | Stock | Rating
+row 1 : Laptop A | Electronics | 1200 | 50 | 4.5
+row 2 : Desk B | Furniture | 300 | 20 | 4.2
+row 3 : Phone C | Electronics | 800 | 100 | 4.7
+row 4 : Chair D | Furniture | 150 | 30 | 4.0
+row 5 : Tablet E | Electronics | 500 | 75 | 4.3
 */
-Question: what is the away team with the highest score?
-Explanation: The question asks for the away team with the highest score. The highest away team score is 23.11 (149), which is in row 5. Therefore, we only need row 5.
-The answer is: f_select_row([row 5])
+Question : which electronics products are available?
+Explenation : the question asks about electronics products. Looking at the Category column, electronics products are in row 1, row 3, and row 5.
+The answer is : f_select_row([row 1, row 3, row 5])
 
+/*
+table caption : 1972 vfl season.
+col : home team | home team score | away team | away team score | venue | crowd
+row 1 : st kilda | 13.12 (90) | melbourne | 13.11 (89) | moorabbin oval | 18836
+row 2 : south melbourne | 9.12 (66) | footscray | 11.13 (79) | lake oval | 9154
+row 3 : richmond | 20.17 (137) | fitzroy | 13.22 (100) | mcg | 27651
+row 4 : geelong | 17.10 (112) | collingwood | 17.9 (111) | kardinia park | 23108
+row 5 : north melbourne | 8.12 (60) | carlton | 23.11 (149) | arden street oval | 11271
+row 6 : hawthorn | 15.16 (106) | essendon | 12.15 (87) | vfl park | 36749
+*/
+question : what is the away team with the highest score?
+explenation : the question want to ask the away team of highest away team score. the highest away team score is 23.11 (149). it is on the row 5.so we need row 5.
+The answer is : f_select_row([row 5])
 
-Select relevant rows. Output ONLY in this exact format: "The answer is: f_select_row([row X, row Y, ...])"
-
-EXAMPLES:
-
-Table: home team | home team score | away team | away team score | venue | crowd
-Question: what is the away team with the highest score?
-The answer is: f_select_row([row 5])
-
-Table: Player | Goals | Assists | Team | Position
-Question: Compare the goals scored by players from Manchester United and Chelsea.
-The answer is: f_select_row([row 2, row 5, row 8])
-
-Table: Year | Revenue | Profit | Employees | Location
-Question: What was the profit in 2019?
-The answer is: f_select_row([row 3])
-
-Table: Rank | Country | Population | GDP | Continent
-Question: Which countries in the top 5 are from Asia?
-The answer is: f_select_row([row 1, row 2, row 3, row 4, row 5])
-
-Table: Date | Temperature | Humidity | Wind Speed | Weather
-Question: What were the weather conditions on Monday and Friday?
-The answer is: f_select_row([row 1, row 5])
-
-Table: Student | Math | Science | English | Grade Level
-Question: Who are the students in grade 10?
-The answer is: f_select_row([row 2, row 4, row 7])
-
-Table: Movie | Director | Year | Rating | Box Office
-Question: Which movies were released between 2015 and 2018?
-The answer is: f_select_row([row 3, row 4, row 6, row 8])
-
-Table: Product | Price | Category | Sales | Availability
-Question: What is the price of laptops and tablets?
-The answer is: f_select_row([row 1, row 3, row 6])
-
-[Task]
+/*
+col : Student | Subject | Grade | Semester | Teacher
+row 1 : Alice | Math | A | Fall2023 | Dr.Smith
+row 2 : Alice | Physics | B+ | Fall2023 | Dr.Jones
+row 3 : Alice | English | A- | Spring2024 | Prof.Lee
+row 4 : Bob | Math | B | Fall2023 | Dr.Smith
+row 5 : Bob | Chemistry | A | Fall2023 | Dr.Brown
+row 6 : Carol | Math | A+ | Fall2023 | Dr.Smith
+*/
+Question : what courses did Alice take in Fall 2023?
+Explenation : the question asks about Alice's courses in Fall 2023. Looking at the table, Alice appears in row 1 and row 2 for Fall 2023. We need to select these rows.
+The answer is : f_select_row([row 1, row 2])

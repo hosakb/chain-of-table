@@ -1,16 +1,76 @@
-[Instruction]
-Use f_select_column() to filter out useless columns in the table according to the information in the question. Your output must be in the format:
-The answer is: f_select_column([COLUMN_1, COLUMN_2, ...])
+========================================= Prompt =========================================
+Use f_select_column() to filter out useless columns in the table according to information in the statement and the table.
 
-[Example 1]
 /*
-col: competition | total matches | cardiff win | draw | swansea win
-row 1: league | 55 | 19 | 16 | 20
-row 2: fa cup | 2 | 0 | 2 | 2
-row 3: league cup | 5 | 2 | 0 | 3
+col : competition | total matches | cardiff win | draw | swansea win 
+row 1 : league | 55 | 19 | 16 | 20 
+row 2 : fa cup | 2 | 0 | 27 | 2 
+row 3 : league cup | 5 | 2 | 0 | 3 
 */
-Question: there are no cardiff wins that have a draw greater than 27.
-Explanation: The question is about "cardiff win" and "draw". We only need these two columns to verify the statement.
-The answer is: f_select_column([cardiff win, draw])
 
-[Task]
+statement : there are no cardiff wins that have a draw greater than 27.
+similar words link to columns :
+no cardiff wins -> cardiff win
+a draw -> draw
+column value link to columns :
+27 -> draw
+semantic sentence link to columns :
+None
+The answer is : f_select_column([cardiff win, draw])
+
+/*
+col : Player | Position | Team | Goals | Assists | Minutes | Age
+row 1 : Smith | Forward | TeamA | 15 | 8 | 2400 | 28
+row 2 : Jones | Midfielder | TeamB | 5 | 12 | 2200 | 25
+row 3 : Brown | Defender | TeamA | 2 | 3 | 2500 | 30
+*/
+statement : which player scored the most goals?
+similar words link to columns :
+player -> Player
+goals -> Goals
+column value link to columns :
+None
+semantic sentence link to columns :
+most -> need Goals column for comparison
+The answer is : f_select_column([Player, Goals])
+
+/*
+col : Store | Month | Revenue | Expenses | Profit | Region
+row 1 : Store A | January | 15000 | 12000 | 3000 | North
+row 2 : Store B | February | 18000 | 13000 | 5000 | South
+row 3 : Store C | March | 12000 | 10000 | 2000 | East
+*/
+statement : what was the total revenue by region?
+similar words link to columns :
+revenue -> Revenue
+region -> Region
+column value link to columns :
+None
+semantic sentence link to columns :
+total -> need Revenue for aggregation
+The answer is : f_select_column([Revenue, Region])
+
+/*
+col : Book | Author | Pages | Year | Genre | Rating | Publisher
+row 1 : Novel A | Writer X | 320 | 2020 | Fiction | 4.5 | ABC Books
+row 2 : Guide B | Writer Y | 180 | 2021 | Non-fiction | 4.2 | XYZ Press
+row 3 : Story C | Writer Z | 250 | 2019 | Fiction | 4.8 | ABC Books
+*/
+statement : which fiction books were published after 2019?
+similar words link to columns :
+fiction -> Genre
+published -> Year
+books -> Book
+column value link to columns :
+2019 -> Year
+fiction -> Genre
+semantic sentence link to columns :
+None
+The answer is : f_select_column([Book, Year, Genre])
+
+========================================= Format =========================================
+Only respond in the following format, without providing and further description or thoughts:
+
+The answer is : f_select_column([Book, Year, Genre])
+The answer is : f_select_column([Revenue, Region])
+The answer is : f_select_column([Player, Goals])

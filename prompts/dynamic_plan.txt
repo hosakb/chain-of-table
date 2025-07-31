@@ -1,6 +1,19 @@
-====================================================================== CONTEXT =====================================================
+========================================= Prompt =========================================
 
-############################################################ Atomic Operation ######################################################
+[Atomic Operations]
+
+If the table only needs a few columns to answer the question, we use f_select_column() to select these columns for it. For example,
+/*
+col : Rank | Cyclist | Team | Time | UCI ProTour Points | Country
+row 1 : 1 | Alejandro Valverde | Caisse d'Epargne | 5h 29' 10" | 40 | ESP
+row 2 : 2 | Alexandr Kolobnev | Team CSC Saxo Bank | s.t. | 30 | RUS
+row 3 : 3 | Davide Rebellin | Gerolsteiner | s.t. | 25 | ITA
+row 4 : 4 | Paolo Bettini | Quick Step | s.t. | 20 | ITA
+*/
+Question: Which country had the most cyclists finish within the top 4?
+Function: f_select_column(Rank, Country)
+Explanation: The question asks about countries and their cyclist counts in top positions. We only need the Rank and Country columns to answer this question, so we select these two columns and remove the unnecessary information. 
+
 If the table only needs a few rows to answer the question, we use f_select_row() to select
 these rows for it. For example,
 /*
@@ -10,56 +23,46 @@ row 2 : south melbourne | 9.12 (66) | footscray | 11.13 (79) | lake oval | 9154
 row 3 : richmond | 20.17 (137) | fitzroy | 13.22 (100) | mcg | 27651
 */
 Question : Whose home team score is higher, richmond or st kilda?
-Operation: f_select_row(row 1, row 3)
-Explanation: The question asks about the home team score of richmond and st kilda. We need
-to know the the information of richmond and st kilda in row 1 and row 3. We select row 1
-and row 3.
+Function: f_select_row(row 1, row 3)
+Explanation: The question asks about the home team score of richmond and st kilda. We need to know the the information of richmond and st kilda in row 1 and row 3. We select row 1 and row 3.
 
-If the table only needs a few columns to answer the question, we use
-f_select_column() to select these columns for it. For example,
+If we need to extract or compute new information from existing columns, we use f_add_column() to add a new column with derived values. For example,
 /*
-col: Rank | Player | Team | Age
-row 1: 1 | Tom Brady | Buccaneers | 44
-row 2: 2 | Aaron Rodgers | Packers | 38
-row 3: 3 | Patrick Mahomes | Chiefs | 26
+col : Date | Opponent | Result
+row 1 : April 13, 2023 | Team A | W 27-21
+row 2 : April 20, 2023 | Team B | L 14-28
+row 3 : May 1, 2023 | Team C | W 35-10
 */
-Question: What is the age of each player?
-Operation: f_select_column(Player, Age)
-Explanation: The question only asks for the player and their age. We can ignore the other
-columns, so we use f_select_column to select the 'Player' and 'Age' columns.
+Question: In which year did the team have the most wins?
+Function: f_add_column(Year)
+Explanation: The question asks about years, but the current table only has full dates. We need to extract the year information from the Date column and create a new Year column with values like "2023, 2023, 2023" to properly answer the question.
 
-If the question asks about items with the same value and the number of these items, we use
-f_group_by() to group the items. For example,
+If the question asks about counting items with the same value or aggregating by categories, we use f_group_by() to group the items and get counts. For example,
 /*
-col: Rank | Lane | Athlete | Time | Country
-row 1: 1 | 6 | Manjeet Kaur (IND) | 52.17 | IND
-row 2: 2 | 5 | Olga Tereshkova (KAZ) | 51.86 | KAZ
-row 3: 3 | 4 | Pinki Pramanik (IND) | 53.06 | IND
-row 4: 4 | 1 | Tang Xiaoyin (CHN) | 53.66 | CHN
-row 5: 5 | 8 | Marina Maslyonko (KAZ) | 53.99 | KAZ
+col : Player | Position | Team | Goals
+row 1 : Smith | Forward | Team A | 5
+row 2 : Jones | Midfielder | Team A | 2
+row 3 : Brown | Forward | Team B | 3
+row 4 : Davis | Forward | Team A | 4
 */
-Question: tell me the number of athletes from india.
-Operation: f_group_by(Country)
-Explanation: The question asks about the number of athletes from India. Each row is about
-an athlete. We can group column "Country" to group the athletes from the same country.
+Question: What is the most common Positon?
+Function: f_group_by(Position)
+Explanation: The question asks about the most common position. We need to group the players by their positions (Forward, Midfielder) and count how many players are in each position.
 
-If the question asks about the order of items in a column, we use f_sort_by() to sort
-the items. For example,
+If the question asks about the order of items, rankings, or finding maximum/minimum values, we use f_sort_by() to sort the items by a specific column. For example,
 /*
-col: Position | Club | Played | Points | Wins | Draws | Losses | Goals for | Goals against
-row 1: 1 | Malaga CF | 42 | 79 | 22 | 13 | 7 | 72 | 47
-row 10: 10 | CP Merida | 42 | 59 | 15 | 14 | 13 | 48 | 41
-row 3: 3 | CD Numancia | 42 | 73 | 21 | 10 | 11 | 68 | 40
+col : Student | Math Score | Science Score | Total Score
+row 1 : Alice | 85 | 92 | 177
+row 2 : Bob | 78 | 85 | 163
+row 3 : Carol | 92 | 88 | 180
+row 4 : David | 88 | 90 | 178
 */
-Question: what club placed in the last position?
-Operation: f_sort_by(Position)
-Explanation: the question asks about the club in the last position. Each row is about a
-club. We need to know the order of position from last to front. There is a column for
-position and the column name is Position. The datatype is Numerical.
+Question: Who has the highest total score?
+Function: f_sort_by(Total Score, descending)
+Explanation: The question asks about the highest total score, which requires ordering students by their total scores from highest to lowest. We sort by Total Score in descending order so the student with the highest score appears first.
 
-############################################################ Operation Chains ######################################################
-
-Here are examples of using the operations to answer the question.
+[Operation Chain Demo]
+Here are examples of using the operations to answer the question:
 /*
 col : Date | Division | League | Regular Season | Playoffs | Open Cup
 row 1 : 2001/01/02 | 2 | USL A-League | 4th, Western | Quarterfinals | Did not qualify
@@ -67,69 +70,89 @@ row 2 : 2002/08/06 | 2 | USL A-League | 2nd, Pacific | 1st Round | Did not quali
 row 5 : 2005/03/24 | 2 | USL First Division | 5th | Quarterfinals | 4th Round
 */
 Question: what was the last year where this team was a part of the usl a-league?
-Completion: 
-f_add_column(Year) -> f_select_row(row 1, row 2) -> f_select_column(Year, League) -> f_sort_by(Year) -> <END>
+Function Chain: f_add_column(Year) -> f_select_column(Year, League) -> f_select_row(row 1, row 2) -> f_sort_by(Year) -> <END>
 
-Here are examples of using the operations to answer the question.
 /*
-col : Rank | Team | Points
-row 1 : 1 | Lakers | 112
-row 2 : 2 | Warriors | 109
-row 3 : 3 | Celtics | 115
-row 4 : 4 | Nets | 105
-row 5 : 5 | Bucks | 118
-row 6 : 6 | Suns | 101
+col : Player | Game 1 | Game 2 | Game 3 | Total Points | Team
+row 1 : Alice | 85 | 92 | 88 | 250 | Red
+row 2 : Bob | 78 | 85 | 90 | 253 | Blue
+row 3 : Carol | 92 | 88 | 85 | 265 | Red
+row 4 : David | 88 | 90 | 82 | 260 | Blue
+row 5 : Emma | 90 | 87 | 91 | 268 | Red
 */
-Question: which team in the top 5 has the most points?
-Completion: 
-f_select_row(row 1, row 2, row 3, row 4, row 5) -> f_sort_by(Points) -> <END>
+Question: how many players from the red team scored above 260 points?
+Function Chain: f_select_column(Total Points, Team) -> f_sort_by(Total Points, descending) -> f_select_row(row 1, row 3) -> <END>
 
-Here are examples of using the operations to answer the question.
 /*
-col : Actor | Year | Award | Film
-row 1 : Morgan Freeman | 2005 | Best Supporting Actor | Million Dollar Baby
-row 2 : Denzel Washington | 2002 | Best Actor | Training Day
-row 3 : Morgan Freeman | 1990 | Best Actor | Driving Miss Daisy
-row 4 : Al Pacino | 1993 | Best Actor | Scent of a Woman
-row 5 : Morgan Freeman | 1995 | Best Actor | The Shawshank Redemption
+col : Student | Subject | Grade | Semester | Teacher
+row 1 : Alice | Math | A | Fall | Dr. Smith
+row 2 : Bob | Math | B+ | Fall | Dr. Smith
+row 3 : Alice | Science | A- | Fall | Dr. Jones
+row 4 : Carol | Math | A | Fall | Dr. Smith
+row 5 : Bob | Science | B | Fall | Dr. Jones
+row 6 : Carol | Science | A+ | Fall | Dr. Jones
 */
-Question: which actor has won the most awards from this list?
-Completion: 
-f_select_column(Actor) -> f_group_by(Actor) -> f_sort_by(Count) -> <END>
+Question: which teacher teaches the most students?
+Function Chain: f_select_column(Teacher) -> f_group_by(Teacher) -> f_sort_by(Count, descending) -> <END>
 
-Here are examples of using the operations to answer the question.
 /*
-col : City | Country | Population (Millions) | Area (km2)
-row 1 : Tokyo | Japan | 37.4 | 13452
-row 2 : Delhi | India | 29.3 | 11320
-row 3 : Shanghai | China | 26.3 | 6340
-row 4 : Sao Paulo | Brazil | 21.8 | 7944
-row 5 : Mexico City | Mexico | 21.6 | 7346
+col : Company | Revenue | Employees | Industry | Founded
+row 1 : TechCorp | 500M | 2000 | Technology | 2010
+row 2 : FinanceInc | 300M | 1500 | Finance | 2005
+row 3 : RetailCo | 800M | 5000 | Retail | 1995
+row 4 : StartupX | 50M | 200 | Technology | 2018
+row 5 : BankGroup | 600M | 3000 | Finance | 1980
 */
-Question: Among the top 3 most populous cities, which one has the smallest area?
-Completion: 
-f_select_row(row 1, row 2, row 3) -> f_select_column(City, Area (km2)) -> f_sort_by(Area (km2)) -> <END>
+Question: what are the top 3 companies by revenue?
+Function Chain: f_select_column(Company, Revenue) -> f_sort_by(Revenue, descending) -> f_select_row(row 1, row 2, row 3) -> <END>
 
-Complete the operation chain. Output ONLY the operations separated by " -> " and ending with "<END>". No other text.
+/*
+col : Store | Month | Sales | Region | Manager | Type
+row 1 : Store1 | Jan | 50000 | North | Alice | Retail
+row 2 : Store2 | Jan | 45000 | South | Bob | Outlet
+row 3 : Store3 | Jan | 60000 | East | Carol | Retail
+row 4 : Store1 | Feb | 55000 | North | Alice | Retail
+row 5 : Store2 | Feb | 48000 | South | Bob | Outlet
+row 6 : Store3 | Feb | 62000 | East | Carol | Retail
+row 7 : Store1 | Mar | 52000 | North | Alice | Retail
+row 8 : Store2 | Mar | 46000 | South | Bob | Outlet
+row 9 : Store3 | Mar | 58000 | East | Carol | Retail
+*/
+Question: what were the total sales for retail stores in February?
+Function Chain: f_select_column(Month, Sales) -> f_select_row(row 4, row 5, row 6) -> f_select_column(Sales) -> <END>
 
-VALID OPERATIONS: f_select_row, f_select_column, f_group_by, f_sort_by, f_add_column
+/*
+col : Product | Category | Price | Stock | Supplier | Rating
+row 1 : Laptop | Electronics | 1200 | 15 | TechSupply | 4.5
+row 2 : Chair | Furniture | 150 | 25 | HomeGoods | 4.2
+row 3 : Phone | Electronics | 800 | 30 | TechSupply | 4.7
+row 4 : Desk | Furniture | 300 | 12 | HomeGoods | 4.0
+row 5 : Tablet | Electronics | 600 | 20 | TechSupply | 4.3
+row 6 : Sofa | Furniture | 1000 | 8 | ComfortCo | 4.6
+*/
+Question: which supplier has the highest average product rating?
+Function Chain: f_select_column(Supplier, Rating) -> f_add_column(Average Rating) -> f_sort_by(Average Rating, descending) -> <END>
 
-EXAMPLES:
+/*
+col : Employee | Department | Salary | Years | Performance | Manager
+row 1 : John | Sales | 60000 | 3 | Excellent | Sarah
+row 2 : Mary | IT | 75000 | 5 | Good | Mike
+row 3 : Paul | Sales | 55000 | 2 | Good | Sarah
+row 4 : Lisa | IT | 80000 | 7 | Excellent | Mike
+row 5 : Tom | HR | 50000 | 1 | Fair | Linda
+row 6 : Anna | Sales | 65000 | 4 | Excellent | Sarah
+*/
+Question: how many employees in the sales department have excellent performance?
+Function Chain: f_select_column(Department, Rating) -> f_select_row(row 1, row 3, row 6) -> f_group_by(Rating) -> <END>
 
-Table: Date | Division | League | Regular Season | Playoffs | Open Cup
-Question: what was the last year where this team was a part of the usl a-league?
-Chain: f_add_column(Year) -> f_select_row(row 1, row 2) -> f_select_column(Year, League) -> f_sort_by(Year) -> <END>
+/*
+col : Movie | Genre | Year | Rating | Box Office Sales | Director
+row 1 : Action Hero | Action | 2022 | 7.5 | 250M | Smith
+row 2 : Love Story | Romance | 2021 | 8.2 | 120M | Johnson
+row 3 : Space Wars | Sci-Fi | 2023 | 8.8 | 400M | Lee
+row 4 : Comedy Night | Comedy | 2022 | 6.9 | 80M | Brown
+row 5 : Thriller Park | Thriller | 2021 | 7.8 | 180M | Davis
+*/
+Question: what are the top 2 highest-grossing movies?
+Function Chain: f_select_column(Movie, Box Office Sales) -> f_sort_by(Box Office Sales, descending) -> f_select_row(row 1, row 2) -> <END>
 
-Table: Rank | Team | Points
-Question: which team in the top 5 has the most points?
-Chain: f_select_row(row 1, row 2, row 3, row 4, row 5) -> f_sort_by(Points) -> <END>
-
-Table: Actor | Year | Award | Film
-Question: which actor has won the most awards from this list?
-Chain: f_select_column(Actor) -> f_group_by(Actor) -> f_sort_by(Count) -> <END>
-
-Table: City | Country | Population (Millions) | Area (km2)
-Question: Among the top 3 most populous cities, which one has the smallest area?
-Chain: f_select_row(row 1, row 2, row 3) -> f_select_column(City, Area (km2)) -> f_sort_by(Area (km2)) -> <END>
-
-======================================================================== TASK ======================================================
