@@ -1,4 +1,3 @@
-========================================= Prompt =========================================
 Use f_select_column() to filter out useless columns in the table according to information in the statement and the table.
 
 /*

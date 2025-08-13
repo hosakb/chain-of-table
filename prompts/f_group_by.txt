@@ -1,4 +1,3 @@
-========================================= Prompt =========================================
 To answer the question, we can first use f_group_by() to group the values in a column.
 
 /*

@@ -1,19 +1,13 @@
 import abc
-import requests
 import json
-import logging
-
-import openai
 import httpx
+from logger_factory import get_logger
 from utils import RecoverableError, ModelError
 
 
 class ILanguageModel(abc.ABC):
-    def __init__(self):
-        self.logger = logging.getLogger("my_logger")
-
     @abc.abstractmethod
-    async def generate_response(self, prompt) -> str:
+    async def generate_response(self, prompt, table_name: str) -> str:
         pass
 
     @abc.abstractmethod
@@ -29,21 +23,21 @@ class LLM:
             raise TypeError("Provided strategy must be an instance of LLMStrategy.")
         self._strategy = strategy
 
-    def set_strategy(self, strategy: ILanguageModel):
-        if not isinstance(strategy, ILanguageModel):
-            raise TypeError("Provided strategy must be an instance of LLMStrategy.")
-        self._strategy = strategy
+    async def query_llm(self, prompt: str, table_name: str) -> str:
+        llm_req_logger = get_logger(table_name, "llm-requests")
+        error_logger = get_logger(table_name, "error")
 
-    async def query_llm(self, prompt: str) -> str:
+        llm_req_logger.debug(f"LLM Request Prompt:\n{prompt}")
+
         try:
             if self._strategy is None:
                 raise ValueError("[query_llm] - No strategy set")
-
-            if not prompt or not prompt.strip():
+            if not prompt.strip():
                 raise ValueError("Prompt cannot be empty")
 
-            return await self._strategy.generate_response(prompt)
+            return await self._strategy.generate_response(prompt, table_name)
         except Exception as e:
+            error_logger.error(f"[query_llm] - Failed to retrieve response: {e}")
             raise ModelError(
                 f"[query_llm] - Failed to retrieve response from model: {e}"
             ) from e
@@ -52,112 +46,124 @@ class LLM:
         return self._strategy.get_model_name()
 
 
-########################################## Strategies #################################################
-
-
-class ChatGPTStrategy(ILanguageModel):
-    def __init__(self, args):
-        self._api_key = args["api_key"]
-        self._args = args
-
-    async def generate_response(self, prompt: str) -> str:
-
-        openai.api_key = self._api_key
-        try:
-            response = await openai.chat.completions.create(
-                model=self._args["model"],
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self._args["temperature"],
-                max_tokens=self._args["max_tokens"],
-                top_p=self._args["top_p"],
-                frequency_penalty=self._args["frequency_penalty"],
-                presence_penalty=self._args["presence_penalty"],
-            )
-
-            content = response.choices[0].message.content
-
-            if content is None:
-                raise ValueError("Received empty response from OpenAI")
-
-            return content.strip()
-
-        except openai.APIError as e:
-            raise ModelError("[generate_response] - OpenAI API error occurred.") from e
-        except Exception as e:
-            raise ModelError(
-                f"[generate_response] - Unexpected error in response generation: {e}"
-            ) from e
-
-    def get_model_name(self) -> str:
-        return f"ChatGPT-{self._args['model']}"
-
-
 class LocalOllamaStrategy(ILanguageModel):
-    def __init__(self, args: dict):
-        super().__init__()
+    def __init__(self, args: dict, max_connections):
         self._args = args
-
-        limits = httpx.Limits(
-            max_connections=24,
-            max_keepalive_connections=24,
-        )
-
+        limits = httpx.Limits(max_connections=max_connections, max_keepalive_connections=max_connections)
         timeout = httpx.Timeout(connect=120, read=120.0, write=60.0, pool=None)
-
         self._client = httpx.AsyncClient(
             base_url=self._args["base_url"],
             headers={"Content-Type": "application/json"},
             limits=limits,
-            timeout=timeout
+            timeout=timeout,
         )
 
-    async def generate_response(self, prompt: str) -> str:
-
+    async def generate_response(self, prompt: str, table_name: str) -> str:
+        llm_resp_logger = get_logger(table_name, "llm-responses")
+        error_logger = get_logger(table_name, "error")  # unified name
         url = "/generate"
-        headers = {"Content-Type": "application/json"}
         payload = {
             "model": self._args["model"],
             "prompt": prompt,
             "stream": False,
             "options": {
                 "temperature": self._args["temperature"],
-                "num_predict": self._args["max_tokens"],
-                "top_p": self._args["top_p"],
+                # "num_predict": self._args["max_tokens"],
+                # "top_p": self._args["top_p"],
             },
         }
 
         try:
             resp = await self._client.post(url, json=payload)
             resp.raise_for_status()
-
             data = resp.json()
             if "response" not in data:
-                raise ModelError(
-                    f"[generate_response] - no “response” key in reply: {data}"
-                )
-            self.logger.info(f"Response: {data['response']}")
+                raise ModelError(f"No 'response' key in reply: {data}")
+            llm_resp_logger.debug(f"LLM Response:\n{data['response']}")
             return data["response"]
-        
-        except httpx.ReadTimeout as e:
-            self.logger.warning(f"[generate_response] - read timeout ({self._client.timeout.read}s)")
-            raise RecoverableError("LLM request timed out") from e
 
+        except httpx.ReadTimeout as e:
+            error_logger.error(f"LLM request timed out: {e}")
+            raise RecoverableError("LLM request timed out") from e
         except httpx.ConnectError as e:
-            raise ModelError(
-                f"[generate_response] - could not connect to Ollama at {resp.url}"
-            ) from e
+            error_logger.error(f"Could not connect to Ollama: {e}")
+            raise ModelError(f"Could not connect to Ollama at {resp.url}") from e
         except httpx.HTTPStatusError as e:
+            error_logger.error(
+                f"Status error {e.response.status_code}: {e.response.text}"
+            )
             raise ModelError(
-                f"[generate_response] - status error {e.response.status_code}: "
-                f"{e.response.text}"
+                f"Status error {e.response.status_code}: {e.response.text}"
             ) from e
         except json.JSONDecodeError as e:
-            raise ModelError(
-                f"[generate_response] - invalid JSON in response: {resp.text!r}"
-            ) from e
+            error_logger.error(f"Invalid JSON in response: {resp.text!r}")
+            raise ModelError(f"Invalid JSON in response: {resp.text!r}") from e
         except Exception as e:
-            self.logger.exception(f"[generate_response] - unexpected error: {e}")
-            raise ModelError(f"[generate_response] - unexpected error: {e}") from e
+            error_logger.error(f"Unexpected error: {e}")
+            raise ModelError(f"Unexpected error: {e}") from e
+
+    def get_model_name(self) -> str:
+        return self._args["model"]
+
+
+class VLLMStrategy(ILanguageModel):
+    def __init__(self, args: dict, max_connections):
+        self._args = args
+        limits = httpx.Limits(max_connections=max_connections, max_keepalive_connections=max_connections)
+        timeout = httpx.Timeout(connect=120, read=120.0, write=60.0, pool=None)
+        self._client = httpx.AsyncClient(
+            base_url=self._args["base_url"],
+            headers={"Content-Type": "application/json"},
+            limits=limits,
+            timeout=timeout,
+        )
+
+    async def generate_response(self, prompt: str, table_name: str) -> str:
+        llm_resp_logger = get_logger(table_name, "llm-responses")
+        error_logger = get_logger(table_name, "error")  # unified name
+        url = "/v1/completions"
+        payload = {
+            "prompt": prompt,
+            # "max_tokens": 4000,
+            # "temperature": 0.2,
+        }
+
+        try:
+            resp = await self._client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+            if "choices" not in data or not data["choices"] or "text" not in data["choices"][0]:
+                raise ModelError(f"Invalid LLM response format: {data}")
+
+            text = data["choices"][0]["text"]
+
+            if not text.strip():
+                llm_resp_logger.debug("LLM Response: <EMPTY>")
+            else:
+                llm_resp_logger.debug(f"LLM Response:\n{text}")
+            llm_resp_logger.debug(f"JSON: {json.dumps(data, indent=2)}")
+            return text
+
+        except httpx.ReadTimeout as e:
+            error_logger.error(f"LLM request timed out: {e}")
+            raise RecoverableError("LLM request timed out") from e
+        except httpx.ConnectError as e:
+            error_logger.error(f"Could not connect to VLLM: {e}")
+            raise ModelError(f"Could not connect to VLLM at {resp.url}") from e
+        except httpx.HTTPStatusError as e:
+            error_logger.error(
+                f"Status error {e.response.status_code}: {e.response.text}"
+            )
+            raise ModelError(
+                f"Status error {e.response.status_code}: {e.response.text}"
+            ) from e
+        except json.JSONDecodeError as e:
+            error_logger.error(f"Invalid JSON in response: {resp.text!r}")
+            raise ModelError(f"Invalid JSON in response: {resp.text!r}") from e
+        except Exception as e:
+            error_logger.error(f"Unexpected error: {e}")
+            raise ModelError(f"Unexpected error: {e}") from e
 
     def get_model_name(self) -> str:
         return self._args["model"]

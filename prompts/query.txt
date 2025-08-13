@@ -1,5 +1,3 @@
-========================================= Prompt =========================================
-
 Here is the table to answer this question. Please understand the table and answer the
 question:
 /*

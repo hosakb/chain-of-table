@@ -1,4 +1,3 @@
-========================================= Prompt =========================================
 To answer the question, we can first use f_add_column() to add more columns to the table.
 The added columns should have these data types:
 1. Numerical: the numerical strings that can be used in sort, sum

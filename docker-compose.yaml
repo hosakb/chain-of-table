@@ -1,0 +1,20 @@
+# https://huggingface.co/docs/text-generation-inference/main/en/basic_tutorials/launcher
+
+services:
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    command:
+      - "--model=${MODEL}"
+      # - "--max-model-len=8192"
+      # - "--max-num-batched-tokens=8192"
+      # - "--max-num-seqs=1"
+    ports:
+      - "8080:8000"
+    shm_size: 16g
+    volumes:
+      - ./data:/root/.cache/huggingface
+    environment:
+      HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN}"
+      CUDA_VISIBLE_DEVICES: "${vLLM_DEVICE}"
+    gpus: "all"

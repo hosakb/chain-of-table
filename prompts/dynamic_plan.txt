@@ -1,68 +1,91 @@
-========================================= Prompt =========================================
+Given a set of operations and their instructions, a table of information, and a question, you are required to devise a plan (as a sequence of the provided operations) to address the question. Your plan must only contain operations from the available operations list, and the plan must always end with the <END> operation.
 
-[Atomic Operations]
+Your output must be a valid chain in the following format:  
+<operation>(<args>) -> <operation>(<args>) -> ... -> <END>
 
-If the table only needs a few columns to answer the question, we use f_select_column() to select these columns for it. For example,
-/*
-col : Rank | Cyclist | Team | Time | UCI ProTour Points | Country
-row 1 : 1 | Alejandro Valverde | Caisse d'Epargne | 5h 29' 10" | 40 | ESP
-row 2 : 2 | Alexandr Kolobnev | Team CSC Saxo Bank | s.t. | 30 | RUS
-row 3 : 3 | Davide Rebellin | Gerolsteiner | s.t. | 25 | ITA
-row 4 : 4 | Paolo Bettini | Quick Step | s.t. | 20 | ITA
-*/
-Question: Which country had the most cyclists finish within the top 4?
-Function: f_select_column(Rank, Country)
-Explanation: The question asks about countries and their cyclist counts in top positions. We only need the Rank and Country columns to answer this question, so we select these two columns and remove the unnecessary information. 
+The available operations are:
 
-If the table only needs a few rows to answer the question, we use f_select_row() to select
-these rows for it. For example,
-/*
-col : Home team | Home Team Score | Away Team | Away Team Score | Venue | Crowd
-row 1 : st kilda | 13.12 (90) | melbourne | 13.11 (89) | moorabbin oval | 18836
-row 2 : south melbourne | 9.12 (66) | footscray | 11.13 (79) | lake oval | 9154
-row 3 : richmond | 20.17 (137) | fitzroy | 13.22 (100) | mcg | 27651
-*/
-Question : Whose home team score is higher, richmond or st kilda?
-Function: f_select_row(row 1, row 3)
-Explanation: The question asks about the home team score of richmond and st kilda. We need to know the the information of richmond and st kilda in row 1 and row 3. We select row 1 and row 3.
+1.  f_select_column  
+    Description: If the table only needs a few columns to answer the question, we use f_select_column() to select these columns.  
+    Example:
+    /*
+    col : Rank | Cyclist | Team | Time | UCI ProTour Points | Country
+    row 1 : 1 | Alejandro Valverde | Caisse d'Epargne | 5h 29' 10" | 40 | ESP
+    row 2 : 2 | Alexandr Kolobnev | Team CSC Saxo Bank | s.t. | 30 | RUS
+    row 3 : 3 | Davide Rebellin | Gerolsteiner | s.t. | 25 | ITA
+    row 4 : 4 | Paolo Bettini | Quick Step | s.t. | 20 | ITA
+    */
+    Question: Which country had the most cyclists finish within the top 4?
+    Function: f_select_column(Rank, Country)
+    Explanation: The question asks about countries and their cyclist counts in top positions. We only need the Rank and Country columns to answer this question, so we select these two columns and remove the unnecessary information. 
 
-If we need to extract or compute new information from existing columns, we use f_add_column() to add a new column with derived values. For example,
-/*
-col : Date | Opponent | Result
-row 1 : April 13, 2023 | Team A | W 27-21
-row 2 : April 20, 2023 | Team B | L 14-28
-row 3 : May 1, 2023 | Team C | W 35-10
-*/
-Question: In which year did the team have the most wins?
-Function: f_add_column(Year)
-Explanation: The question asks about years, but the current table only has full dates. We need to extract the year information from the Date column and create a new Year column with values like "2023, 2023, 2023" to properly answer the question.
+2.  f_select_row  
+    Description: If the table only needs a few rows to answer the question, we use f_select_row() to select these rows.  
+    Example:  
+    Table:
+    /*
+    col : Date | Opponent | Result
+    row 1 : April 13, 2023 | Team A | W 27-21
+    row 2 : April 20, 2023 | Team B | L 14-28
+    row 3 : May 1, 2023 | Team C | W 35-10
+    */
+    Question: In which year did the team have the most wins?
+    Function: f_add_column(Year)
+    Explanation: The question asks about years, but the current table only has full dates. We need to extract the year information from the Date column and create a new Year column with values like "2023, 2023, 2023" to properly answer the question.
 
-If the question asks about counting items with the same value or aggregating by categories, we use f_group_by() to group the items and get counts. For example,
-/*
-col : Player | Position | Team | Goals
-row 1 : Smith | Forward | Team A | 5
-row 2 : Jones | Midfielder | Team A | 2
-row 3 : Brown | Forward | Team B | 3
-row 4 : Davis | Forward | Team A | 4
-*/
-Question: What is the most common Positon?
-Function: f_group_by(Position)
-Explanation: The question asks about the most common position. We need to group the players by their positions (Forward, Midfielder) and count how many players are in each position.
+3.  f_add_column  
+    Description: If the table does not have the needed column to answer the question, we use f_add_column() to add a new column.  
+    Example:  
+    Table:
+    /*
+    col : Date | Opponent | Result
+    row 1 : April 13, 2023 | Team A | W 27-21
+    row 2 : April 20, 2023 | Team B | L 14-28
+    row 3 : May 1, 2023 | Team C | W 35-10
+    */
+    Question: In which year did the team have the most wins?
+    Function: f_add_column(Year)
+    Explanation: The question asks about years, but the current table only has full dates. We need to extract the year information from the Date column and create a new Year column with values like "2023, 2023, 2023" to properly answer the question.
 
-If the question asks about the order of items, rankings, or finding maximum/minimum values, we use f_sort_by() to sort the items by a specific column. For example,
-/*
-col : Student | Math Score | Science Score | Total Score
-row 1 : Alice | 85 | 92 | 177
-row 2 : Bob | 78 | 85 | 163
-row 3 : Carol | 92 | 88 | 180
-row 4 : David | 88 | 90 | 178
-*/
-Question: Who has the highest total score?
-Function: f_sort_by(Total Score, descending)
-Explanation: The question asks about the highest total score, which requires ordering students by their total scores from highest to lowest. We sort by Total Score in descending order so the student with the highest score appears first.
+4.  f_sort_by  
+    Description: If the question asks about the order of items in a column, we use f_sort_by() to sort the items.  
+    Example:  
+    Table:
+    /*
+    col : Student | Math Score | Science Score | Total Score
+    row 1 : Alice | 85 | 92 | 177
+    row 2 : Bob | 78 | 85 | 163
+    row 3 : Carol | 92 | 88 | 180
+    row 4 : David | 88 | 90 | 178
+    */
+    Question: Who has the highest total score?
+    Function: f_sort_by(Total Score, descending)
+    Explanation: The question asks about the highest total score, which requires ordering students by their total scores from highest to lowest. We sort by Total Score in descending order so the student with the highest score appears first.
 
-[Operation Chain Demo]
-Here are examples of using the operations to answer the question:
+5.  f_group_by  
+    Description: If the question asks about items with the same value and the number of these items, we use f_group_by() to group the items.  
+    Example:  
+    Table:
+    /*
+    col : Player | Position | Team | Goals
+    row 1 : Smith | Forward | Team A | 5
+    row 2 : Jones | Midfielder | Team A | 2
+    row 3 : Brown | Forward | Team B | 3
+    row 4 : Davis | Forward | Team A | 4
+    */
+    Question: What is the most common Positon?
+    Function: f_group_by(Position)
+    Explanation: The question asks about the most common position. We need to group the players by their positions (Forward, Midfielder) and count how many players are in each position.
+
+6.  <END>  
+    Description: The terminal operation indicating the end of the plan.  
+    Example:  
+    <END>
+
+---
+
+Below are example plans expressed in chain format:
+
 /*
 col : Date | Division | League | Regular Season | Playoffs | Open Cup
 row 1 : 2001/01/02 | 2 | USL A-League | 4th, Western | Quarterfinals | Did not qualify
@@ -156,3 +179,7 @@ row 5 : Thriller Park | Thriller | 2021 | 7.8 | 180M | Davis
 Question: what are the top 2 highest-grossing movies?
 Function Chain: f_select_column(Movie, Box Office Sales) -> f_sort_by(Box Office Sales, descending) -> f_select_row(row 1, row 2) -> <END>
 
+---
+Now, using the table and question provided below, output a valid function chain according to the above schema. Do not include any additional text.
+
+The table is as follows:

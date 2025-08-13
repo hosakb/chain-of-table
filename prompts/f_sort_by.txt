@@ -1,4 +1,3 @@
-========================================= Prompt =========================================
 To answer the question, we can first use f_sort_by() to sort the values in a column to get the order of the items. The order can be "large to small" or "small to large".
 The column to sort should have these data types:
 1. Numerical: the numerical strings that can be used in sort

@@ -35,7 +35,6 @@ def build_prompt_for_dynamic_plan(table, question, chain) -> str:
     prompt += f"\n{table}\n"
     prompt += "Question: " + question + "\n"
     prompt += "Function Chain: " + str(chain) + "\n"
-    prompt += "======================================= Completion ======================================="
 
     return prompt
 
@@ -65,8 +64,6 @@ def build_prompt_for_generate_args(table, question, f):
     
     prompt += table + "\n"
     prompt += "Question: " + question + "\n"
-    prompt += "======================================= Completion ======================================="  
-
     return prompt, pattern
 
 
@@ -79,6 +76,4 @@ def get_prompt_for_query(table, question):
     prompt += "Please answer the following question about the table: \n"
     prompt += f"{table}\n"
     prompt += "Question: " + question + "\n"
-    prompt += "======================================= Completion ======================================="
-    
     return prompt

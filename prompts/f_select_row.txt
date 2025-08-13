@@ -1,4 +1,3 @@
-========================================= Prompt =========================================
 Use f_select_row() to select relevant rows in the given table that help to answer the
 question.
 Please use f_select_row([*]) to select all rows in the table.
